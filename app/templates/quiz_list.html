@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Мои тесты — Quiz API{% endblock %}
+
+{% block content %}
+
+<div style="text-align: center; margin-bottom: 1.5rem; padding: 1rem; background: #252525; border-radius: 8px;">
+  <h1 style="color: var(--primary); margin-bottom: 0.5rem;">👋 Добро пожаловать, {{ username }}!</h1>
+  <p style="color: #aaa; margin-bottom: 0.5rem;">Создавайте тесты, проходите их и отслеживайте результаты</p>
+  <a href="/profile" class="btn btn-outline" style="margin-top: 0.5rem;">Посмотреть мой профиль</a>
+</div>
+
+<!-- Форма создания теста -->
+<div class="card" style="margin-top: 1.5rem; background: #252525;">
+  <h3>➕ Создать новый тест</h3>
+  <form id="quizForm" method="POST" action="/quizzes/create" style="margin-top: 1rem;">
+    <div class="field">
+      <label for="title">Название теста</label>
+      <input type="text" id="title" name="title" required>
+    </div>
+    <div class="field">
+      <label for="description">Описание (необязательно)</label>
+      <textarea id="description" name="description" rows="2"></textarea>
+    </div>
+
+    <h4 style="margin-top: 1.5rem; color: var(--primary);">Вопросы</h4>
+    <div id="questions-container">
+    </div>
+    <button type="button" id="add-question-btn" class="btn btn-outline">+ Добавить вопрос</button>
+    <br><br>
+    <button type="submit" class="btn">Создать тест</button>
+    <div id="form-error" class="error" style="margin-top: 0.5rem; display: none;"></div>
+  </form>
+</div>
+
+{% if request.query_params.get("success") %}
+  <div class="success" style="color: #4caf50; margin-bottom: 1rem;">✅ {{ request.query_params.get("success") }}</div>
+{% endif %}
+{% if request.query_params.get("error") %}
+  <div class="error" style="margin-bottom: 1rem;">❌ {{ request.query_params.get("error") }}</div>
+{% endif %}
+
+<h3 style="margin-top: 2rem;">Мои тесты ({{ quizzes|length }})</h3>
+
+{% if quizzes %}
+  {% for quiz in quizzes %}
+    <div class="quiz-item">
+      <div class="quiz-title">{{ quiz.title }}</div>
+      {% if quiz.description %}
+        <div class="quiz-desc">{{ quiz.description }}</div>
+      {% endif %}
+      <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+        <a href="/quizzes/{{ quiz.id }}/take" class="btn btn-outline" style="font-size: 0.9rem;">Пройти тест</a>
+        <form action="/quizzes/{{ quiz.id }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Удалить тест «{{ quiz.title }}»? Это действие нельзя отменить.')">
+          <button type="submit" class="btn" style="background: #f44336; font-size: 0.9rem;">Удалить</button>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p style="color: #888; margin-top: 1rem;">У вас пока нет ни одного теста.</p>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let questions = [];
+  const formError = document.getElementById('form-error');
+  const form = document.getElementById('quizForm');
+  
+  function saveFormData() {
+    document.querySelectorAll('.question-card').forEach((card, qIndex) => {
+      if (!questions[qIndex]) return;
+      
+      const questionInput = card.querySelector('input[name^="questions"][name$="[text]"]');
+      if (questionInput) {
+        questions[qIndex].text = questionInput.value;
+      }
+      
+      const optionItems = card.querySelectorAll('.option-item');
+      optionItems.forEach((optionItem, optIndex) => {
+        if (!questions[qIndex].options[optIndex]) return;
+        
+        const textInput = optionItem.querySelector('input[type="text"]');
+        const checkbox = optionItem.querySelector('.correct-checkbox');
+        
+        if (textInput) {
+          questions[qIndex].options[optIndex].text = textInput.value;
+        }
+        if (checkbox) {
+          questions[qIndex].options[optIndex].is_correct = checkbox.checked;
+        }
+      });
+    });
+    
+    localStorage.setItem('quizBuilderState', JSON.stringify(questions));
+  }
+  
+  function restoreFormData() {
+    document.querySelectorAll('.question-card').forEach((card, qIndex) => {
+      if (!questions[qIndex]) return;
+      
+      const questionInput = card.querySelector('input[name^="questions"][name$="[text]"]');
+      if (questionInput && questions[qIndex].text) {
+        questionInput.value = questions[qIndex].text;
+      }
+      
+      const optionItems = card.querySelectorAll('.option-item');
+      optionItems.forEach((optionItem, optIndex) => {
+        if (!questions[qIndex].options[optIndex]) return;
+        
+        const textInput = optionItem.querySelector('input[type="text"]');
+        const checkbox = optionItem.querySelector('.correct-checkbox');
+        
+        if (textInput && questions[qIndex].options[optIndex].text) {
+          textInput.value = questions[qIndex].options[optIndex].text;
+        }
+        if (checkbox) {
+          checkbox.checked = questions[qIndex].options[optIndex].is_correct;
+        }
+      });
+    });
+  }
+  document.addEventListener('click', function(event) {
+    if (event.target.tagName === 'BUTTON' && event.target.type !== 'submit') {
+      event.preventDefault();
+    }
+    
+    if (event.target.id === 'add-question-btn') {
+      saveFormData();
+      addQuestion();
+      return;
+    }
+    
+    if (event.target.closest('[data-action="remove-question"]')) {
+      const button = event.target.closest('[data-action="remove-question"]');
+      const index = parseInt(button.dataset.index);
+      saveFormData();
+      removeQuestion(index);
+      return;
+    }
+
+    if (event.target.closest('[data-action="add-option"]')) {
+      const button = event.target.closest('[data-action="add-option"]');
+      const qIndex = parseInt(button.dataset.qindex);
+      saveFormData();
+      addOption(qIndex);
+      return;
+    }
+  });
+  
+  document.addEventListener('input', function(event) {
+    if (event.target.matches('input[type="text"], textarea')) {
+      clearTimeout(window.typingTimer);
+      window.typingTimer = setTimeout(saveFormData, 300);
+    }
+  });
+  
+  document.addEventListener('change', function(event) {
+    if (event.target.classList.contains('correct-checkbox')) {
+      saveFormData();
+      validateQuestion(event);
+    }
+  });
+  
+  if (form) {
+    form.addEventListener('submit', function(event) {
+      saveFormData();
+      if (!validateForm()) {
+        event.preventDefault();
+      } else {
+        localStorage.removeItem('quizBuilderState');
+      }
+    });
+  }
+  
+  function renderQuestions() {
+    const container = document.getElementById('questions-container');
+    container.innerHTML = '';
+    
+    questions.forEach((question, index) => {
+      const questionHtml = `
+        <div class="card question-card" style="background: #333; margin-top: 1rem; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <strong>Вопрос ${index + 1}</strong>
+            <button type="button" data-action="remove-question" data-index="${index}" class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">🗑️</button>
+          </div>
+          <div class="field" style="margin-top: 0.5rem;">
+            <input type="text" name="questions[${index}][text]" value="${(question.text || '').replace(/"/g, '&quot;')}" placeholder="Текст вопроса" required style="width: 100%;">
+          </div>
+          <div class="field">
+            <label>Варианты ответов:</label>
+            <div id="options-${index}" class="options-container">
+              ${question.options.map((option, optIndex) => `
+                <div class="option-item" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
+                  <input type="text" name="questions[${index}][options][${optIndex}][text]" value="${(option.text || '').replace(/"/g, '&quot;')}" placeholder="Вариант ${optIndex + 1}" required>
+                  <label><input type="checkbox" name="questions[${index}][options][${optIndex}][is_correct]" class="correct-checkbox" ${option.is_correct ? 'checked' : ''}> Правильный</label>
+                </div>
+              `).join('')}
+            </div>
+            <button type="button" data-action="add-option" data-qindex="${index}" style="margin-top: 0.3rem; font-size: 0.9rem;" class="btn btn-outline">+ Вариант</button>
+            <div class="question-error" style="color: var(--error); margin-top: 0.3rem; font-size: 0.9rem; display: none;">Выберите хотя бы один правильный ответ!</div>
+          </div>
+        </div>
+      `;
+      container.innerHTML += questionHtml;
+    });
+    
+    restoreFormData();
+  }
+  
+  function addQuestion() {
+    questions.push({
+      text: '',
+      options: [{
+        text: '',
+        is_correct: false
+      }]
+    });
+    renderQuestions();
+  }
+
+  function removeQuestion(index) {
+    questions.splice(index, 1);
+    renderQuestions();
+    checkQuestionsEmpty();
+  }
+  
+  function addOption(qIndex) {
+    if (!questions[qIndex].options) {
+      questions[qIndex].options = [];
+    }
+    questions[qIndex].options.push({
+      text: '',
+      is_correct: false
+    });
+    renderQuestions();
+
+    setTimeout(() => {
+      const container = document.getElementById(`options-${qIndex}`);
+      if (container) {
+        const lastInput = container.querySelector('.option-item:last-child input[type="text"]');
+        if (lastInput) lastInput.focus();
+      }
+    }, 10);
+  }
+  
+  function validateQuestion(event) {
+    const checkbox = event.target;
+    const questionCard = checkbox.closest('.question-card');
+    if (!questionCard) return;
+    
+    const errorDiv = questionCard.querySelector('.question-error');
+    const checkboxes = questionCard.querySelectorAll('.correct-checkbox');
+    const hasCorrect = Array.from(checkboxes).some(cb => cb.checked);
+    
+    if (!hasCorrect) {
+      errorDiv.style.display = 'block';
+    } else {
+      errorDiv.style.display = 'none';
+    }
+  }
+
+  function validateForm() {
+    formError.style.display = 'none';
+    let isValid = true;
+    
+    questions.forEach((question, index) => {
+      const hasCorrect = question.options.some(opt => opt.is_correct);
+      const card = document.querySelector(`.question-card:nth-child(${index + 1})`);
+      if (card && !hasCorrect) {
+        const errorDiv = card.querySelector('.question-error');
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          isValid = false;
+        }
+      }
+    });
+    
+    if (!isValid) {
+      formError.textContent = 'Ошибка: В каждом вопросе должен быть хотя бы один правильный ответ!';
+      formError.style.display = 'block';
+      formError.scrollIntoView({behavior: 'smooth', block: 'center'});
+      return false;
+    }
+    
+    return true;
+  }
+  
+  function checkQuestionsEmpty() {
+    if (questions.length === 0) {
+      addQuestion();
+    }
+  }
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedState = localStorage.getItem('quizBuilderState');
+    if (savedState) {
+      questions = JSON.parse(savedState);
+    } else {
+      addQuestion();
+    }
+    
+    renderQuestions();
+    
+    document.querySelectorAll('button[type="button"]').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+      });
+    });
+    
+    document.getElementById('title')?.focus();
+  });
+</script>
+{% endblock %}

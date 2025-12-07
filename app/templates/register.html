@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация — Quiz API{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>📝 Регистрация</h2>
+  <p>Создайте аккаунт, чтобы начать создавать тесты.</p>
+  <form id="registerForm" style="margin-top: 1rem;">
+    <div class="field">
+      <label for="username">Имя пользователя</label>
+      <input type="text" id="username" name="username" required minlength="3">
+    </div>
+    <div class="field">
+      <label for="password">Пароль (мин. 6 символов)</label>
+      <input type="password" id="password" name="password" required minlength="6">
+    </div>
+    <button type="submit" class="btn">Зарегистрироваться</button>
+    <p style="margin-top: 1rem;">
+      Уже есть аккаунт? <a href="/login" style="color: var(--primary);">Войти</a>
+    </p>
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+  </form>
+</div>
+
+<script>
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const res = await fetch('/auth/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    if (res.ok) {
+      alert('✅ Регистрация успешна! Теперь войдите.');
+      window.location.href = '/login';
+    } else {
+      const err = await res.json();
+      alert('❌ Ошибка: ' + (err.detail || 'Не удалось зарегистрироваться'));
+    }
+  });
+</script>
+{% endblock %}

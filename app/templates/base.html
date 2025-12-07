@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Quiz API{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      {% if request.url.path != '/login' and request.url.path != '/register' %}
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <span style="color: var(--fg); font-weight: 500;">👋 Привет, {{ username }}!</span>
+          <a href="/profile" class="btn btn-outline">Мой профиль</a>
+          <a href="/quizzes" class="btn btn-outline">Мои тесты</a>
+          <a href="/logout" class="btn btn-outline" onclick="document.cookie='token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;'">Выйти</a>
+        </div>
+      {% else %}
+        <a href="/login" class="btn btn-outline">Вход</a>
+        <a href="/register" class="btn">Регистрация</a>
+      {% endif %}
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <div class="footer">
+      Сервис для создания тестов
+    </div>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

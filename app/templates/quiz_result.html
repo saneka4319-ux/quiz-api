@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Результат теста{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>🎉 Результат теста</h2>
+  <p>Вы ответили правильно на <strong>{{ score }}</strong> из <strong>{{ total }}</strong> вопросов.</p>
+  <p style="margin-bottom: 0px">Процент правильных ответов: <strong>{{ percentage }}%</strong></p>
+  <a href="/quizzes" class="btn" style="margin-top: 1.5rem;">Вернуться к тестам</a>
+</div>
+{% endblock %}

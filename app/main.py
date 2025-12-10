@@ -144,7 +144,6 @@ async def create_quiz_web(
             opt_index += 1
             
         if options:
-            # ✅ ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: хотя бы 1 правильный ответ
             if not has_correct:
                 error = f"В вопросе {q_index + 1} не выбран правильный ответ"
                 return RedirectResponse(url=f"/quizzes?error={error}", status_code=303)
@@ -154,7 +153,6 @@ async def create_quiz_web(
     if not questions_data:
         return RedirectResponse(url="/quizzes?error=Добавьте%20хотя%20бы%20один%20вопрос%20с%20вариантами", status_code=303)
 
-    # Создаём тест
     quiz_in = schemas.QuizCreateWithQuestions(
         title=title.strip(),
         description=description.strip() if description else None,
@@ -167,7 +165,6 @@ async def create_quiz_web(
     await crud.quizzes.create_quiz_with_questions(db, quiz_in, current_user.id)
     return RedirectResponse(url="/quizzes?success=Тест%20успешно%20создан", status_code=303)
 
-# === API Routes ===
 
 @app.post(
     "/auth/register",

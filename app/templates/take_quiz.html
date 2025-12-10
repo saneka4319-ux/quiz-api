@@ -5,6 +5,11 @@
 {% block content %}
 <div class="card">
   <h2>📝 {{ quiz.title }}</h2>
+  {% if quiz.owner %}
+    <p style="color: #aaa; margin-top: -0.5rem; font-size: 0.9rem;">Автор: {{ quiz.owner.username }}</p>
+  {% else %}
+    <p style="color: #888; margin-top: -0.5rem; font-size: 0.9rem;">Автор: неизвестен</p>
+  {% endif %}
   {% if quiz.description %}
     <p class="quiz-desc">{{ quiz.description }}</p>
   {% endif %}

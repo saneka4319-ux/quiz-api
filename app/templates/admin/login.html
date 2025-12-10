@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔐 Вход в админку</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container" style="max-width: 500px; margin-top: 3rem;">
+    <div class="card">
+      <h2>🛠️ Панель администратора</h2>
+      <p style="color: #aaa; margin: 1rem 0;">Войдите для управления пользователями и тестами</p>
+      
+      <form method="post" action="/admin/login" style="margin-top: 1.5rem;">
+        <div class="field">
+          <label>Имя пользователя</label>
+          <input type="text" value="admin" disabled style="background: #2a2a2a; color: #888;">
+        </div>
+        <div class="field">
+          <label for="password">Пароль</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn">Войти</button>
+        
+        {% if error %}
+          <div class="error" style="margin-top: 1rem;">{{ error }}</div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</body>
+</html>

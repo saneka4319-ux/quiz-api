@@ -9,7 +9,8 @@
 <body>
   <div class="container">
     <div class="nav">
-      {% if request.url.path != '/login' and request.url.path != '/register' %}
+      {% if request.url.path.startswith('/admin/') %}
+      {% elif request.url.path != '/login' and request.url.path != '/register' %}
         <div style="display: flex; align-items: center; gap: 1rem;">
           <span style="color: var(--fg); font-weight: 500;">👋 Привет, {{ username }}!</span>
           <a href="/profile" class="btn btn-outline">Мой профиль</a>

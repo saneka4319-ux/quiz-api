@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="background: #1a1a1a; padding: 1.5rem; margin-top: 1rem;">
+  <h2 style="color: #ff5722; margin-top: 0;">🛠️ Панель администратора</h2>
+  
+  {% if request.query_params.get("success") %}
+    <div class="success" style="color: #4caf50; margin-bottom: 1rem;">✅ {{ request.query_params.get("success") }}</div>
+  {% endif %}
+  {% if request.query_params.get("error") %}
+    <div class="error" style="margin-bottom: 1rem;">❌ {{ request.query_params.get("error") }}</div>
+  {% endif %}
+
+  {% block admin_content %}{% endblock %}
+  
+  <div style="margin-top: 2rem; text-align: right;">
+    <a href="/admin/logout" class="btn" style="background: #f44336;">Выйти из админки</a>
+  </div>
+</div>
+{% endblock %}

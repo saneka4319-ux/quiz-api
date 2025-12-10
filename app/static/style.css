@@ -197,7 +197,6 @@ textarea:focus {
 	border-top: 1px solid var(--border-light);
 }
 
-/* Улучшенная доступность: focus для всех интерактивных элементов */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {

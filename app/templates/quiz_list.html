@@ -10,7 +10,6 @@
   <a href="/profile" class="btn btn-outline" style="margin-top: 0.5rem;">Посмотреть мой профиль</a>
 </div>
 
-<!-- Форма создания теста -->
 <div class="card" style="margin-top: 1.5rem; background: #252525;">
   <h3>➕ Создать новый тест</h3>
   <form id="quizForm" method="POST" action="/quizzes/create" style="margin-top: 1rem;">
@@ -43,22 +42,30 @@
 <h3 style="margin-top: 2rem;">Мои тесты ({{ quizzes|length }})</h3>
 
 {% if quizzes %}
+  <h3 style="margin-top: 2rem;">Все тесты ({{ quizzes|length }})</h3>
+  
   {% for quiz in quizzes %}
     <div class="quiz-item">
       <div class="quiz-title">{{ quiz.title }}</div>
       {% if quiz.description %}
         <div class="quiz-desc">{{ quiz.description }}</div>
       {% endif %}
+      <div style="margin-top: 0.3rem; font-size: 0.9rem; color: #888;">
+        <strong>Автор:</strong> {{ quiz.owner.username }}
+      </div>
       <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
         <a href="/quizzes/{{ quiz.id }}/take" class="btn btn-outline" style="font-size: 0.9rem;">Пройти тест</a>
-        <form action="/quizzes/{{ quiz.id }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Удалить тест «{{ quiz.title }}»? Это действие нельзя отменить.')">
-          <button type="submit" class="btn" style="background: #f44336; font-size: 0.9rem;">Удалить</button>
-        </form>
+        
+        {% if current_user and quiz.owner_id == current_user.id %}
+          <form action="/quizzes/{{ quiz.id }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Удалить тест «{{ quiz.title }}»? Это действие нельзя отменить.')">
+            <button type="submit" class="btn" style="background: #f44336; font-size: 0.9rem;">Удалить</button>
+          </form>
+        {% endif %}
       </div>
     </div>
   {% endfor %}
 {% else %}
-  <p style="color: #888; margin-top: 1rem;">У вас пока нет ни одного теста.</p>
+  <p style="color: #888; margin-top: 1rem;">Пока нет ни одного теста. Создайте первый!</p>
 {% endif %}
 
 {% endblock %}
@@ -122,6 +129,7 @@
       });
     });
   }
+  
   document.addEventListener('click', function(event) {
     if (event.target.tagName === 'BUTTON' && event.target.type !== 'submit') {
       event.preventDefault();
@@ -140,7 +148,7 @@
       removeQuestion(index);
       return;
     }
-
+    
     if (event.target.closest('[data-action="add-option"]')) {
       const button = event.target.closest('[data-action="add-option"]');
       const qIndex = parseInt(button.dataset.qindex);
@@ -220,7 +228,7 @@
     });
     renderQuestions();
   }
-
+  
   function removeQuestion(index) {
     questions.splice(index, 1);
     renderQuestions();
@@ -236,7 +244,7 @@
       is_correct: false
     });
     renderQuestions();
-
+    
     setTimeout(() => {
       const container = document.getElementById(`options-${qIndex}`);
       if (container) {
@@ -261,7 +269,7 @@
       errorDiv.style.display = 'none';
     }
   }
-
+  
   function validateForm() {
     formError.style.display = 'none';
     let isValid = true;

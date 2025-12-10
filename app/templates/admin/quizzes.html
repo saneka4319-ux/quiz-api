@@ -1,0 +1,55 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<h3>📚 Все тесты ({{ quizzes|length }})</h3>
+
+{% if quizzes %}
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #333;">
+          <th style="text-align: left; padding: 0.75rem;">ID</th>
+          <th style="text-align: left; padding: 0.75rem;">Название теста</th>
+          <th style="text-align: left; padding: 0.75rem;">Описание</th>
+          <th style="text-align: left; padding: 0.75rem;">Владелец</th>
+          <th style="text-align: left; padding: 0.75rem;">Дата создания</th>
+          <th style="text-align: left; padding: 0.75rem;">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for quiz in quizzes %}
+          <tr style="border-bottom: 1px solid #333;">
+            <td style="padding: 0.75rem;">{{ quiz.id }}</td>
+            <td style="padding: 0.75rem;">
+              <strong>{{ quiz.title }}</strong>
+            </td>
+            <td style="padding: 0.75rem;">{{ quiz.description|default('—', true)|truncate(50) }}</td>
+            <td style="padding: 0.75rem;">
+              {% if quiz.owner %}
+                {{ quiz.owner.username }}
+              {% else %}
+                <span style="color: #f44336;">(владелец удален)</span>
+              {% endif %}
+            </td>
+            <td style="padding: 0.75rem;">
+              {% if quiz.created_at %}
+                {{ quiz.created_at.strftime('%d.%m.%Y %H:%M') }}
+              {% else %}
+                <span style="color: #f44336;">Дата не указана</span>
+              {% endif %}
+            </td>
+            <td style="padding: 0.75rem;">
+              <form action="/admin/quizzes/delete/{{ quiz.id }}" method="post" style="display: inline;" 
+                    onsubmit="return confirm('Удалить тест «{{ quiz.title }}»?')">
+                <button type="submit" class="btn" style="background: #f44336; padding: 0.3rem 0.6rem; font-size: 0.9rem;">Удалить</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p style="color: #888; margin-top: 1rem;">Нет созданных тестов</p>
+{% endif %}
+{% endblock %}

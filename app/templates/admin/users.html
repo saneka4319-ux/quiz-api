@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<h3>👥 Пользователи ({{ users|length }})</h3>
+
+{% if users %}
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #333;">
+          <th style="text-align: left; padding: 0.75rem;">ID</th>
+          <th style="text-align: left; padding: 0.75rem;">Имя пользователя</th>
+          <th style="text-align: left; padding: 0.75rem;">Дата регистрации</th>
+          <th style="text-align: left; padding: 0.75rem;">Тестов</th>
+          <th style="text-align: left; padding: 0.75rem;">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr style="border-bottom: 1px solid #333;">
+            <td style="padding: 0.75rem;">{{ user.id }}</td>
+            <td style="padding: 0.75rem;">
+              <strong>{{ user.username }}</strong>
+            </td>
+            <td style="padding: 0.75rem;">{{ user.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td style="padding: 0.75rem;">{{ user.quizzes_count }}</td>
+            <td style="padding: 0.75rem;">
+              <form action="/admin/users/delete/{{ user.id }}" method="post" style="display: inline;" 
+                    onsubmit="return confirm('Удалить пользователя «{{ user.username }}» и все его тесты?')">
+                <button type="submit" class="btn" style="background: #f44336; padding: 0.3rem 0.6rem; font-size: 0.9rem;">Удалить</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p style="color: #888; margin-top: 1rem;">Нет зарегистрированных пользователей</p>
+{% endif %}
+{% endblock %}

@@ -11,7 +11,6 @@ from datetime import timedelta
 from . import schemas, crud, database, models, auth
 from jose import JWTError
 
-# === Инициализация приложения с красивой документацией ===
 app = FastAPI(
     title="📚 Quiz API — Сервис создания тестов",
     description="""
@@ -39,6 +38,9 @@ app = FastAPI(
     ]
 )
 
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin" 
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
@@ -47,6 +49,7 @@ async def init_models():
     async with database.engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
 
+# === Вспомогательная функция для веб-слоя ===
 async def get_user_from_token(token: str, db: AsyncSession):
     try:
         payload = auth.jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
@@ -97,10 +100,13 @@ async def quizzes_page(request: Request, db: AsyncSession = Depends(database.get
     current_user = await get_user_from_token(token, db)
     if not current_user:
         return RedirectResponse(url="/login?error=Требуется%20авторизация", status_code=303)
-    quizzes = await crud.quizzes.get_user_quizzes(db, current_user.id, limit=100)
+    
+    quizzes = await crud.quizzes.get_quizzes_with_owners(db, limit=100)
+    
     return templates.TemplateResponse("quiz_list.html", {
         "request": request,
         "quizzes": quizzes,
+        "current_user": current_user,
         "username": current_user.username
     })
 
@@ -138,6 +144,7 @@ async def create_quiz_web(
             opt_index += 1
             
         if options:
+            # ✅ ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: хотя бы 1 правильный ответ
             if not has_correct:
                 error = f"В вопросе {q_index + 1} не выбран правильный ответ"
                 return RedirectResponse(url=f"/quizzes?error={error}", status_code=303)
@@ -147,6 +154,7 @@ async def create_quiz_web(
     if not questions_data:
         return RedirectResponse(url="/quizzes?error=Добавьте%20хотя%20бы%20один%20вопрос%20с%20вариантами", status_code=303)
 
+    # Создаём тест
     quiz_in = schemas.QuizCreateWithQuestions(
         title=title.strip(),
         description=description.strip() if description else None,
@@ -231,7 +239,10 @@ async def take_quiz_page(
     result = await db.execute(
         select(models.Quiz)
         .where(models.Quiz.id == quiz_id)
-        .options(selectinload(models.Quiz.questions).selectinload(models.Question.options))
+        .options(
+            selectinload(models.Quiz.owner),  
+            selectinload(models.Quiz.questions).selectinload(models.Question.options)
+        )
     )
     quiz = result.scalars().first()
     if not quiz:
@@ -239,7 +250,8 @@ async def take_quiz_page(
     
     return templates.TemplateResponse("take_quiz.html", {
         "request": request,
-        "quiz": quiz
+        "quiz": quiz,
+        "current_user": current_user  
     })
 
 @app.post("/quizzes/{quiz_id}/submit", include_in_schema=False)
@@ -294,6 +306,7 @@ async def profile_page(
     if not current_user:
         return RedirectResponse(url="/login?error=Требуется%20авторизация", status_code=303)
     
+    # Отладка: проверяем, загружены ли вопросы
     quizzes = await crud.quizzes.get_user_quizzes(db, current_user.id)
     for quiz in quizzes:
         await db.refresh(quiz, ['questions'])
@@ -333,3 +346,77 @@ async def delete_quiz_web(
         return RedirectResponse(url="/quizzes?error=Не%20удалось%20удалить%20тест", status_code=303)
 
     return RedirectResponse(url="/quizzes?success=Тест%20успешно%20удалён", status_code=303)
+
+# Админка
+
+def verify_admin_password(password: str) -> bool:
+    """Простая проверка пароля администратора"""
+    return password == ADMIN_PASSWORD
+
+@app.get("/admin/login", response_class=HTMLResponse, include_in_schema=False)
+async def admin_login_page(request: Request):
+    error = request.query_params.get("error")
+    return templates.TemplateResponse("admin/login.html", {"request": request, "error": error})
+
+@app.post("/admin/login", response_class=HTMLResponse, include_in_schema=False)
+async def admin_login(request: Request, password: str = Form(...)):
+    if password == ADMIN_PASSWORD:
+        response = RedirectResponse(url="/admin/users", status_code=303)
+        response.set_cookie(key="admin_token", value="admin_session", httponly=False, max_age=3600)
+        return response
+    else:
+        return RedirectResponse(url="/admin/login?error=Неверный%20пароль", status_code=303)
+
+def check_admin_auth(request: Request):
+    """Проверяет, авторизован ли админ"""
+    admin_token = request.cookies.get("admin_token")
+    if admin_token != "admin_session":
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
+
+@app.get("/admin/users", response_class=HTMLResponse, include_in_schema=False)
+async def admin_users_page(request: Request, db: AsyncSession = Depends(database.get_db)):
+    check_admin_auth(request)
+    users = await crud.users.get_all_users(db, limit=100)
+    for user in users:
+        quizzes_count = await db.execute(
+            select(models.Quiz).where(models.Quiz.owner_id == user.id)
+        )
+        user.quizzes_count = len(quizzes_count.scalars().all())
+    return templates.TemplateResponse("admin/users.html", {"request": request, "users": users})
+
+@app.post("/admin/users/delete/{user_id}", include_in_schema=False)
+async def admin_delete_user(
+    request: Request,
+    user_id: int,
+    db: AsyncSession = Depends(database.get_db)
+):
+    check_admin_auth(request)
+    success = await crud.users.delete_user(db, user_id)
+    if not success:
+        return RedirectResponse(url="/admin/users?error=Пользователь%20не%20найден", status_code=303)
+    return RedirectResponse(url="/admin/users?success=Пользователь%20успешно%20удален", status_code=303)
+
+@app.get("/admin/quizzes", response_class=HTMLResponse, include_in_schema=False)
+async def admin_quizzes_page(request: Request, db: AsyncSession = Depends(database.get_db)):
+    check_admin_auth(request)
+    quizzes = await crud.quizzes.get_all_quizzes_with_users(db, limit=100)
+    
+    return templates.TemplateResponse("admin/quizzes.html", {"request": request, "quizzes": quizzes})
+
+@app.post("/admin/quizzes/delete/{quiz_id}", include_in_schema=False)
+async def admin_delete_quiz(
+    request: Request,
+    quiz_id: int,
+    db: AsyncSession = Depends(database.get_db)
+):
+    check_admin_auth(request)
+    success = await crud.quizzes.delete_quiz(db, quiz_id)
+    if not success:
+        return RedirectResponse(url="/admin/quizzes?error=Тест%20не%20найден", status_code=303)
+    return RedirectResponse(url="/admin/quizzes?success=Тест%20успешно%20удален", status_code=303)
+
+@app.get("/admin/logout", include_in_schema=False)
+async def admin_logout():
+    response = RedirectResponse(url="/admin/login", status_code=303)
+    response.set_cookie(key="admin_token", value="", max_age=0)
+    return response

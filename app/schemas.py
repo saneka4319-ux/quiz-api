@@ -38,6 +38,8 @@ class UserCreate(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
     
 class OptionCreate(BaseModel):
     text: str
@@ -51,6 +53,8 @@ class QuizCreateWithQuestions(BaseModel):
     title: str
     description: Optional[str] = None
     questions: list[QuestionCreate]
+
+
 
 class OptionOut(BaseModel):
     id: int

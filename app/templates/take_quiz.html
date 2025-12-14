@@ -6,27 +6,28 @@
 <div class="card">
   <h2>📝 {{ quiz.title }}</h2>
   {% if quiz.owner %}
-    <p style="color: #aaa; margin-top: -0.5rem; font-size: 0.9rem;">Автор: {{ quiz.owner.username }}</p>
+  <p style="color: #aaa; margin-top: -0.5rem; font-size: 0.9rem;">Автор: {{ quiz.owner.username }}</p>
   {% else %}
-    <p style="color: #888; margin-top: -0.5rem; font-size: 0.9rem;">Автор: неизвестен</p>
+  <p style="color: #888; margin-top: -0.5rem; font-size: 0.9rem;">Автор: неизвестен</p>
   {% endif %}
   {% if quiz.description %}
-    <p class="quiz-desc">{{ quiz.description }}</p>
+  <p class="quiz-desc">{{ quiz.description }}</p>
   {% endif %}
 
   <form id="quizForm" method="POST" action="/quizzes/{{ quiz.id }}/submit" style="margin-top: 1.5rem;">
+
     {% for question in quiz.questions %}
-      <div class="card" style="background: #252525; margin-top: 1rem; padding: 1rem;">
-        <h4>{{ loop.index }}. {{ question.text }}</h4>
-        {% for option in question.options %}
-          <div class="field" style="margin-top: 0.5rem;">
-            <label>
-              <input type="radio" name="answers[{{ question.id }}]" value="{{ option.id }}" required>
-              {{ option.text }}
-            </label>
-          </div>
-        {% endfor %}
+    <div class="card" style="background: #252525; margin-top: 1rem; padding: 1rem;">
+      <h4>{{ loop.index }}. {{ question.text }}</h4>
+      {% for option in question.options %}
+      <div class="field" style="margin-top: 0.5rem;">
+        <label>
+          <input type="radio" name="answers[{{ question.id }}]" value="{{ option.id }}" required>
+          {{ option.text }}
+        </label>
       </div>
+      {% endfor %}
+    </div>
     {% endfor %}
     <button type="submit" class="btn" style="margin-top: 1.5rem;">Завершить тест</button>
   </form>
